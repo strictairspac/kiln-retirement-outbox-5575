@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 ASSET_CODE = re.compile(r"[A-Z0-9][A-Z0-9-]{0,23}")
 STAGES = ("none", "before_enqueue", "after_receipt")
+ORIGINS = ("设备组", "档案室")
 
 
 @dataclass(frozen=True)
@@ -12,10 +13,24 @@ class Request:
     failed_stage: str
 
 
+def origin(payload):
+    """正式批次来源；缺省为演练回放，不占用正式编号。"""
+    value = payload.get("origin") if isinstance(payload, dict) else None
+    if value is None:
+        return None
+    if value not in ORIGINS:
+        raise ValueError("批次来源只支持设备组、档案室")
+    return value
+
+
 def parse(payload):
     if not isinstance(payload, dict):
         raise ValueError("请输入退役批次")
+    source = origin(payload)
     until = payload.get("observe_until")
+    if source is None and until is None:
+        raise ValueError("观察时限为 0 到 300 秒")
+    until = 0 if until is None else until
     if type(until) is not int or not 0 <= until <= 300:
         raise ValueError("观察时限为 0 到 300 秒")
     records = payload.get("requests")

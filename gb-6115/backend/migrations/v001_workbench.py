@@ -1,7 +1,7 @@
-from src.models import audit, cases, reviews, runs, users  # Register the tables.
+from src.models import audit, batches, cases, reviews, runs, users  # Register the tables.
 from src.models.base import metadata
 
 
 def upgrade(connection):
-    # Version 1 is additive and fully declarative.
+    # 版本 1 为增量且完全声明式。
     metadata.create_all(connection)

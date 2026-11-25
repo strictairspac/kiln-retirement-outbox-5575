@@ -5,7 +5,7 @@ from sqlalchemy import select, update
 
 from src.config.resources import engine
 from src.constants.job_state import JobState
-from src.domain import scenario
+from src.domain import registry, scenario
 from src.models.cases import cases
 from src.models.runs import runs
 from src.services.audit import record
@@ -25,7 +25,7 @@ def service_one():
             return False
         payload = db.scalar(select(cases.c.payload).where(cases.c.id == task["case_id"]))
         try:
-            result = scenario.run(payload, task["parameter"], db)
+            result = scenario.run(payload, task["parameter"], db, case_id=task["case_id"], run_id=task["id"])
             output = {"status": JobState.DONE, "result": result, "digest": content_digest(result)}
         except Exception as exc:
             # Let the failed database transaction roll back before persisting the error.
@@ -52,8 +52,9 @@ def fail(job_failure):
             reason = str(cause) or "输入资料或批次参数不符合要求"
         else:
             reason = "处理失败，请检查 worker 日志"
-        finish(db, run_id, {"status": JobState.FAILED, "failure": reason[:320]})
-
+        reason = reason[:320]
+        registry.abandon(db, run_id, reason)
+        finish(db, run_id, {"status": JobState.FAILED, "failure": reason})
 
 def finish(db, run_id, output):
     db.execute(update(runs).where(runs.c.id == run_id).values(**output, finished_at=int(time())))

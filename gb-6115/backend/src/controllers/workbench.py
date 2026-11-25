@@ -15,7 +15,7 @@ def new_run(case_id, data, user):
         cache.lpush("workbench:wake", str(run["id"]))
         cache.ltrim("workbench:wake", 0, 99)
     except RedisError:
-        # The database holds the durable queue. The worker also polls it.
+        # 数据库持有持久队列，worker 也会轮询。
         pass
     return run
 

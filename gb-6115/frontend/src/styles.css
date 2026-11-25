@@ -115,3 +115,5 @@ td a[aria-current=true] { font-weight: 750; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+.state-batch-held, .state-batch-succeeded { color: var(--accent); }
+.state-batch-rejected, .state-batch-failed { color: var(--signal); }

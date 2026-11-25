@@ -27,3 +27,27 @@ class CaseEntry(CaseInput):
     id: int
     code: str
     created_by: str
+
+
+class BatchEntry(BaseModel):
+    id: int
+    code: str
+    case_id: int | None
+    run_id: int | None
+    origin: str
+    status: str
+    title: str
+    verdict: str
+    numbers: list[dict]
+    collisions: list[dict] | None
+    archived: int
+    created_by: str
+    created_at: int
+    finished_at: int | None
+
+
+class CaseResult(BaseModel):
+    accepted: bool
+    case: CaseEntry | None
+    batch_id: int | None
+    verdict: str

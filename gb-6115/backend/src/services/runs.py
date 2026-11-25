@@ -4,6 +4,8 @@ from fastapi import HTTPException
 from sqlalchemy import insert, select
 
 from src.constants.job_state import JobState
+from src.domain import registry
+from src.domain.inputs import origin
 from src.domain.scenario import CONFIG
 from src.models.cases import cases
 from src.models.runs import runs
@@ -28,10 +30,19 @@ def list_entries(db):
 def enqueue(db, case_id, parameter, actor):
     if parameter > CONFIG["max_parameter"]:
         raise HTTPException(422, f"参数不能超过 {CONFIG['max_parameter']}")
-    case_service.get(db, case_id)
+    case = case_service.get(db, case_id)
+    formal = origin(case["payload"]) is not None
+    if formal:
+        batch = registry.held_batch(db, case_id, lock=True)
+        if batch is None or batch["status"] != registry.HELD:
+            raise HTTPException(409, "正式退役批次没有持有中的编号，不能提交")
+        if batch["run_id"] is not None:
+            raise HTTPException(409, "正式退役批次已提交执行")
     change = db.execute(insert(runs).values(
         case_id=case_id, status=JobState.QUEUED, parameter=parameter, actor=actor, created_at=int(time())
     ))
     run_id = change.inserted_primary_key[0]
+    if formal:
+        registry.bind_run(db, case_id, run_id)
     audit.record(db, "enqueue", actor, "run", run_id)
     return get(db, run_id)

@@ -1,6 +1,7 @@
 from .delivery import replay
 from .fixtures import FIXTURES
-from .inputs import parse
+from .inputs import origin, parse
+from .registry import BatchError, BatchInterrupted, execute as execute_batch
 from .workshop import RetirementTables
 
 
@@ -25,7 +26,13 @@ def validate(payload):
     parse(payload)
 
 
-def run(payload, parameter, db):
+def run(payload, parameter, db, case_id=None, run_id=None):
+    """正式批次执行整批占号与进档；演练批次照常回放，不触碰正式编号。"""
+    if origin(payload) is not None:
+        if case_id is None or run_id is None:
+            raise BatchError("正式退役批次缺少资料或执行批次")
+        return execute_batch(db, case_id, run_id)
+
     requests, until = parse(payload)
     tables = RetirementTables(db)
     tables.create(requests)

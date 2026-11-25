@@ -4,6 +4,7 @@ export const api = {
   config: () => request("/workbench"),
   login: data => request("/auth/login", {method: "POST", data}),
   cases: () => request("/cases"),
+  batches: () => request("/cases/batches"),
   createCase: data => request("/cases", {method: "POST", data}),
   runs: () => request("/runs"),
   run: (id, signal) => request(`/runs/${id}`, {signal}),

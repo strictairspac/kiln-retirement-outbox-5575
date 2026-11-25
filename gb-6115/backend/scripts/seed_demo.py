@@ -7,7 +7,9 @@ from migrations.v001_workbench import upgrade
 from src.config.resources import engine
 from src.config.settings import DEMO_PASSWORD
 from src.constants.roles import Role
+from src.domain import registry
 from src.domain.scenario import FIXTURES
+from src.domain.inputs import origin
 from src.models.cases import cases
 from src.models.users import users
 from src.utils.passwords import hash_password
@@ -26,6 +28,18 @@ def setup_schema():
         upgrade(db)
 
 
+def seed_batch(db, fixture):
+    """正式演示资料走占号登记，已存在同名资料时保持幂等。"""
+    code = fixture["code"]
+    if db.scalar(select(cases.c.id).where(cases.c.code == code)) is not None:
+        return
+    source = origin(fixture["payload"])
+    registry.register(
+        db, fixture["title"], fixture["description"], fixture["payload"], source, "seed",
+        case_code=code, batch_code=f"FRM-{code}",
+    )
+
+
 def seed():
     with engine.begin() as db:
         existing = set(db.execute(select(users.c.username)).scalars())
@@ -35,7 +49,10 @@ def seed():
                     "username": role.value, "role": role.value, "password_hash": hash_password(DEMO_PASSWORD),
                 })
         for fixture in FIXTURES:
-            insert_new(db, cases, "code", {**fixture, "created_by": "seed"})
+            if origin(fixture["payload"]) is not None:
+                seed_batch(db, fixture)
+            else:
+                insert_new(db, cases, "code", {**fixture, "created_by": "seed"})
         return {table.name: db.scalar(select(func.count()).select_from(table)) for table in (users, cases)}
 
 
